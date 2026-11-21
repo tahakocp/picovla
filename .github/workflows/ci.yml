@@ -1,0 +1,31 @@
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pip install numpy pillow torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
+      - name: unit + JS parity tests (sim bit-exact, JS forward pass vs torch)
+        run: python -m unittest discover -s tests -v
+      - name: smoke train (tiny, checks the pipeline runs end to end)
+        run: |
+          python -m picovla.data --episodes 40 --out /tmp/d.npz
+          python -m picovla.train --data /tmp/d.npz --steps 60 --batch 16 --out /tmp/m.pt
+          python -m picovla.evaluate --ckpt /tmp/m.pt --n 5
+      - name: browser demo in headless Chrome
+        if: matrix.python == '3.13'
+        run: |
+          npm install --no-audit --no-fund
+          N=8 npm run e2e

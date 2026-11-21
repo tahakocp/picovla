@@ -1,0 +1,19 @@
+{
+ "touch/train": 1.0,
+ "touch/heldout": 0.975,
+ "touch/expert": 1.0,
+ "touch/wrong-colour": 0.305,
+ "touch/swapped-followed": 1.0,
+ "push/train": 0.78,
+ "push/heldout": 0.79,
+ "push/expert": 1.0,
+ "push/wrong-colour": 0.0,
+ "push/swapped-followed": 0.795,
+ "toward/train": 0.585,
+ "toward/heldout": 0.5,
+ "toward/expert": 1.0,
+ "toward/wrong-colour": 0.04,
+ "toward/swapped-followed": 0.61,
+ "all/train": 0.7883333333333334,
+ "all/heldout": 0.755
+}
