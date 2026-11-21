@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+data/
+checkpoints/*.pt
+!checkpoints/.keep
+runs/
+node_modules/
+*.egg-info/
+.env
+.DS_Store
+/tmp/
