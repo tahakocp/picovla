@@ -8,9 +8,11 @@ permissions:
   contents: read
   pages: write
   id-token: write
+# Don't cancel an in-progress production deploy: GitHub treats a
+# cancelled check as a failure on the commit.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   deploy:
     runs-on: ubuntu-24.04
