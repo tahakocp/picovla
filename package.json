@@ -1,0 +1,7 @@
+{
+  "name": "picovla-web",
+  "private": true,
+  "type": "module",
+  "scripts": { "e2e": "node e2e/smoke.mjs", "serve": "node e2e/serve.mjs" },
+  "devDependencies": { "puppeteer-core": "^24.0.0" }
+}

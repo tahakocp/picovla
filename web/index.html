@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>picovla: a tiny vision-language-action policy in your browser</title>
+<meta name="description" content="Type an instruction, watch a 0.9M-parameter VLA trained from scratch push blocks. Runs locally in plain JavaScript.">
+<style>
+  [hidden] { display: none !important; }
+  body { font: 16px/1.45 system-ui, sans-serif; margin: 0; background: #f6f3ec; color: #222; }
+  main { max-width: 980px; margin: 0 auto; padding: 18px; }
+  h1 { font-size: 22px; margin: 4px 0 2px; }
+  p.sub { margin: 0 0 14px; color: #555; }
+  .wrap { display: flex; gap: 22px; flex-wrap: wrap; }
+  canvas { width: 448px; height: 448px; max-width: 100%; aspect-ratio: 1; border-radius: 6px; box-shadow: 0 1px 4px #0002; image-rendering: auto; }
+  .side { flex: 1; min-width: 280px; }
+  input[type=text] { width: 100%; box-sizing: border-box; font-size: 17px; padding: 9px 10px; border: 1px solid #bbb; border-radius: 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 14px; }
+  .chips button { font-size: 13px; padding: 4px 8px; border: 1px solid #ccc; background: #fff; border-radius: 14px; cursor: pointer; }
+  .row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .row button { font-size: 15px; padding: 8px 14px; border-radius: 6px; border: 1px solid #888; background: #fff; cursor: pointer; }
+  .row button.go { background: #234; color: #fff; border-color: #234; }
+  #status { font-family: ui-monospace, monospace; font-size: 13px; white-space: pre-wrap; background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 8px; min-height: 90px; }
+  .ok { color: #1a7f37; font-weight: 600; }
+  label { font-size: 14px; color: #444; }
+  footer { margin-top: 22px; font-size: 13px; color: #666; }
+  a { color: #1f5fbf; }
+</style>
+</head>
+<body>
+<main>
+  <h1>picovla</h1>
+  <p class="sub">A 0.9M-parameter vision-language-action policy, trained from scratch on a laptop CPU, running here in plain JavaScript. Nothing is sent anywhere.</p>
+  <div class="wrap">
+    <canvas id="view" width="448" height="448"></canvas>
+    <div class="side">
+      <input id="text" type="text" value="push the red block left" aria-label="Instruction" autocomplete="off">
+      <div class="chips" id="chips"></div>
+      <div class="row">
+        <button class="go" id="run">Run</button>
+        <button id="step">Step</button>
+        <button id="scene">New scene</button>
+      </div>
+      <label><input type="checkbox" id="showplan" checked> show the predicted 8-step action chunk</label>
+      <div id="status">loading model...</div>
+    </div>
+  </div>
+  <footer>
+    The policy sees only the 64x64 picture (bottom right of the canvas), the instruction and the fingertip position.
+    It knows the words in its training phrases; unknown words are ignored. Colours: red, green, blue, yellow.
+    Source, training code and measured success rates: <a href="https://github.com/tahakocp/picovla">github.com/tahakocp/picovla</a>
+  </footer>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>
