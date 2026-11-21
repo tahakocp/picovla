@@ -107,6 +107,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). If you add a feature, add its row to the
 
 The policy follows ACT ([tonyzhaozh/act](https://github.com/tonyzhaozh/act)): action chunks, L1 loss, sim / scripted expert / record / train / evaluate split. DART noise injection is from Laskey et al., 2017. The flat, readable layout is inspired by [karpathy/nanoGPT](https://github.com/karpathy/nanoGPT). [keivalya/mini-vla](https://github.com/keivalya/mini-vla) is another small VLA worth reading, with a diffusion head on a MuJoCo task.
 
-Written with help from AI coding tools. Every number above was measured on the machine described in the table.
+Every number above was measured on the machine described in the table.
 
 MIT license.
