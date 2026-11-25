@@ -48,6 +48,29 @@ Numbers come from `docs/eval.json`, produced by `python -m picovla.evaluate --ab
 | Python core | 466 non-blank, non-comment lines in `picovla/` |
 | JS forward pass | 124 lines in `web/model.js`, no ML library |
 
+## Two action heads, same backbone
+
+New in 0.2: a flow-matching head (as in pi0) next to the original L1 head (as in ACT). Pick one with `--head flow`. It is a 3-layer MLP that turns noise into the 8x2 action chunk in a few Euler steps; the transformer still runs once per chunk, so only the MLP repeats.
+
+Success on the same 200 unseen scenes per task as above:
+
+| head | training | trained phrasing | unseen phrasing | "next to", unseen | CPU per chunk |
+|---|---|---|---|---|---|
+| L1 (shipped) | 12,000 steps | 78.8% | 75.5% | 50.0% | 2.29 ms |
+| flow, 10 steps | L1 backbone frozen, 1,500 head-only steps (102 s) | 79.2% | 76.7% | 55.5% | 3.05 ms |
+| flow, 5 steps | same weights | 80.8% | 75.8% | 50.5% | 2.67 ms |
+| flow, 1 step | same weights | 81.0% | 80.2% | 62.0% | 2.41 ms |
+| L1 | from scratch, 2,400 steps | 20.3% | 30.0% | 13.0% | |
+| flow, 10 steps | from scratch, 2,400 steps | 9.2% | 11.8% | 1.0% | |
+
+What I take from it:
+
+- On a trained backbone the flow head is at least as good as L1. The 1-step row is the best, but with 200 scenes per task one standard error is about 3 points per task, so only the "next to" gain (50% to 62%) is clearly more than noise.
+- Trained from scratch on a short budget, flow is behind: it learns slower than L1 here. I only had CPU time for 2,400 steps per head, so this says nothing about where it ends up after 12,000.
+- The expert is deterministic, so there is no multimodal action distribution for flow matching to model. The benefit pi0 reports comes from data with several valid ways to do a task, which this toy does not have.
+
+CPU per chunk is batch 1, one thread, median of 50 (`python scripts/bench_heads.py`). All rows are in `docs/heads.json`. The browser demo still runs the L1 head.
+
 ## How it works
 
 Read the files in this order.
@@ -56,8 +79,8 @@ Read the files in this order.
 2. [`picovla/expert.py`](picovla/expert.py). A scripted policy that solves every task: go behind the block, line up, push through. It only looks at the current state, so the cloned policy never sees two answers for one picture.
 3. [`picovla/lang.py`](picovla/lang.py). 11 phrasing templates for training, 6 held out for testing, a 23-word vocabulary. No pretrained text model. The word embeddings start random like everything else.
 4. [`picovla/data.py`](picovla/data.py). Runs the expert and records (image, words, fingertip, next 8 actions). Half the episodes add noise to the executed action but keep the clean label (DART). Without this the policy never learns to recover from its own small mistakes.
-5. [`picovla/model.py`](picovla/model.py). Three strided convolutions turn the image into 64 patch tokens. Add 10 word tokens, one fingertip token and 8 learned action queries, run a 4-layer transformer over all 83 tokens, read 8 (dx, dy) actions off the query tokens. The attention is written out by hand so the JS port can follow it line by line.
-6. [`picovla/train.py`](picovla/train.py). L1 loss on the action chunk, as in ACT. AdamW, one-cycle schedule.
+5. [`picovla/model.py`](picovla/model.py). Three strided convolutions turn the image into 64 patch tokens. Add 10 word tokens, one fingertip token and 8 learned action queries, run a 4-layer transformer over all 83 tokens, read 8 (dx, dy) actions off the query tokens with a linear layer, or sample them with the flow-matching head. The attention is written out by hand so the JS port can follow it line by line.
+6. [`picovla/train.py`](picovla/train.py). L1 loss on the action chunk as in ACT, or the rectified-flow velocity loss with `--head flow`. AdamW, one-cycle schedule.
 7. [`picovla/evaluate.py`](picovla/evaluate.py). Closed loop: predict 8 actions, execute 4, look again.
 8. [`picovla/export.py`](picovla/export.py) and [`web/model.js`](web/model.js). Weights to one float32 file, then the same forward pass in JavaScript.
 
@@ -70,15 +93,19 @@ python -m picovla.data --episodes 3000        # 1.2 GB in data/demos.npz
 python -m picovla.train --steps 12000         # checkpoints/picovla.pt, ~40 min on 8 CPU cores
 python -m picovla.evaluate --ckpt checkpoints/picovla.pt --ablate
 python -m picovla.export                      # writes web/model.bin + web/model.json
+
+# flow head on top of the shipped backbone, ~2 min on 8 cores
+python -m picovla.train --head flow --init web/model --freeze --steps 1500 --out checkpoints/flow.pt
+python -m picovla.evaluate --head flow --flow-steps 1 --ckpt checkpoints/flow.pt
 npm run serve                                 # http://127.0.0.1:8000
 ```
 
-The trained checkpoint is also attached to the [v0.1.0 release](https://github.com/tahakocp/picovla/releases/tag/v0.1.0).
+The trained L1 checkpoint is attached to the [v0.1.0 release](https://github.com/tahakocp/picovla/releases/tag/v0.1.0), the flow checkpoint to [v0.2.0](https://github.com/tahakocp/picovla/releases/tag/v0.2.0).
 
 ## Tests
 
 ```bash
-python -m unittest discover -s tests -v     # 10 tests
+python -m unittest discover -s tests -v     # 12 tests
 N=24 npm run e2e                            # needs Chrome; drives the real page
 ```
 
@@ -92,11 +119,25 @@ N=24 npm run e2e                            # needs Chrome; drives the real page
 - It is a 2D toy. Discs, a fingertip, no grasping, no friction model, no camera noise. Nothing here was run on a real robot.
 - "toward" (push one block next to another) works about half the time. The expert needs to go round the block and the cloned policy often stops short or drifts past. More data did not fix it: a second run on 6,000 episodes for 20,000 steps scored 39% overall, so I kept the first one.
 - Language understanding is word-level. It knows 21 words. Unknown words become `<unk>` and are ignored, which is why "shove" and "poke" still work: the colour and direction carry the meaning.
-- Only one seed was trained for the shipped weights.
+- Only one seed was trained for the shipped weights and for each head in the comparison.
+- All timings are CPU only. Nothing was trained or timed on a GPU.
+
+## Next to the real ones
+
+| | picovla | [SmolVLA](https://huggingface.co/blog/smolvla) | [pi0](https://github.com/Physical-Intelligence/openpi) | [OpenVLA](https://github.com/openvla/openvla) |
+|---|---|---|---|---|
+| parameters | 0.9M (1.0M with the flow head) | ~450M | ~3.3B | 7B |
+| action head | L1 chunk or flow matching | flow matching | flow matching | discrete tokens |
+| pretrained parts | none | VLM | VLM | VLM |
+| world | 2D toy sim | real arms (SO-100) | real arms | real arms |
+| runs on | a laptop CPU, a browser tab | one GPU | GPU | GPU |
+
+picovla is for reading the whole loop in an afternoon, not for controlling a robot. If you want a real one, [LeRobot](https://github.com/huggingface/lerobot) has SmolVLA, pi0 and ACT with training and hardware support. Their numbers come from their papers; picovla's are from this repo.
 
 ## Ideas for contributions
 
-- A diffusion or flow-matching action head next to the L1 head, same data, same table.
+- The flow head in the browser (web/model.js), and a from-scratch flow run for the full 12,000 steps.
+- Demonstrations with two valid ways to do a task, where flow matching should beat L1.
 - A wrist-camera view or a second camera.
 - Swap the word embeddings for a small frozen text encoder and test phrasing it has never seen.
 - A 3D version on MuJoCo with the same file layout.
