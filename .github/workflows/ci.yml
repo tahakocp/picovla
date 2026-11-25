@@ -5,6 +5,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     strategy:
       matrix:
         python: ["3.11", "3.12", "3.13"]
@@ -24,6 +25,8 @@ jobs:
           python -m picovla.data --episodes 40 --out /tmp/d.npz
           python -m picovla.train --data /tmp/d.npz --steps 60 --batch 16 --out /tmp/m.pt
           python -m picovla.evaluate --ckpt /tmp/m.pt --n 5
+          python -m picovla.train --data /tmp/d.npz --steps 60 --batch 16 --head flow --out /tmp/f.pt
+          python -m picovla.evaluate --ckpt /tmp/f.pt --head flow --n 5
       - name: browser demo in headless Chrome
         if: matrix.python == '3.13'
         run: |

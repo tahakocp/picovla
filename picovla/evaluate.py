@@ -10,6 +10,7 @@ from .sim import Env, Task, render, MAX_STEPS, DIRS
 from .lang import phrase, tokenize
 from .expert import act
 from .model import PicoVLA
+from .data import H
 
 KINDS = ["touch", "push", "toward"]
 
@@ -44,7 +45,8 @@ def run(model, envs, texts, execute=4):
                 break
             img = torch.from_numpy(np.stack([render(envs[i]) for i in live]))
             st = torch.from_numpy(np.stack([envs[i].state() for i in live]))
-            plan = dict(zip(live, model(img, tok[live], st).numpy()))
+            noise = torch.from_numpy(np.random.default_rng(t).standard_normal((len(live), H, 2)).astype(np.float32))
+            plan = dict(zip(live, model(img, tok[live], st, noise).numpy()))
         for i in np.flatnonzero(~done):
             done[i] = envs[i].step(plan[i][t % execute])
     return done
@@ -58,9 +60,12 @@ def main():
     ap.add_argument("--out", default=None)
     ap.add_argument("--ablate", action="store_true")
     ap.add_argument("--expert", action="store_true", help="also score the scripted expert on the same scenes")
+    ap.add_argument("--head", choices=["l1", "flow"], default="l1")
+    ap.add_argument("--flow-steps", type=int, default=10)
+    ap.add_argument("--threads", type=int, default=8)
     a = ap.parse_args()
-    torch.set_num_threads(8)
-    model = PicoVLA()
+    torch.set_num_threads(a.threads)
+    model = PicoVLA(head=a.head, flow_steps=a.flow_steps)
     if a.ckpt.endswith(".pt"):
         model.load_state_dict(torch.load(a.ckpt))
     else:
