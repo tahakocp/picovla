@@ -1,6 +1,6 @@
 # picovla
 
-A vision-language-action robot policy written from scratch in about 470 lines of PyTorch. It looks at a 64x64 picture, reads an English instruction and moves a two-link arm. It trains in 40 minutes on a CPU, and the same weights run in your browser in plain JavaScript.
+A vision-language-action robot policy written from scratch in about 530 lines of PyTorch. It looks at a 64x64 picture, reads an English instruction and moves a two-link arm, with either an L1 or a flow-matching action head. It trains in 40 minutes on a CPU, and the same weights run in your browser in plain JavaScript.
 
 **[Try it in the browser](https://tahakocp.github.io/picovla/)** (3.6 MB, no install, nothing leaves the page)
 
@@ -41,11 +41,11 @@ Numbers come from `docs/eval.json`, produced by `python -m picovla.evaluate --ab
 
 | | |
 |---|---|
-| parameters | 902,210 |
+| parameters | 902,210 (L1 head), 1,005,890 (flow head) |
 | demonstrations | 3,000 episodes, 96,552 frames, collected in 27 s |
 | training | 12,000 steps, batch 128, 2,388 s on an 8-vCPU Xeon cloud VM, no GPU |
 | browser | 147 ms median per forward pass in headless Chrome on the same VM, one pass per 4 steps |
-| Python core | 466 non-blank, non-comment lines in `picovla/` |
+| Python core | 532 non-blank, non-comment lines in `picovla/` (466 before the flow head) |
 | JS forward pass | 124 lines in `web/model.js`, no ML library |
 
 ## Two action heads, same backbone
